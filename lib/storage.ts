@@ -72,4 +72,7 @@ export const storage = {
     if (error || !data) return null;
     return Buffer.from(await data.arrayBuffer());
   },
+  async deleteBrain(id: string) {
+    await bucket().remove([brainPath(id)]);
+  },
 };
