@@ -1,0 +1,290 @@
+@import "tailwindcss";
+
+:root {
+  --wood-dark: #2b1a10;
+  --wood: #4a2f1c;
+  --wood-light: #6b4426;
+  --wood-plank: #7a4f2c;
+  --wood-plank-light: #96633b;
+  --brass: #c9a35c;
+  --brass-light: #e6c988;
+  --parchment: #f6ecd9;
+  --parchment-dark: #e9dcc0;
+  --ink: #2a1d12;
+  --ink-soft: #5a4632;
+  --danger: #9c3b2e;
+}
+
+@theme inline {
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: var(--wood-dark);
+  color: var(--parchment);
+  font-family: var(--font-body), Georgia, serif;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+}
+
+::selection {
+  background: var(--brass);
+  color: var(--ink);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: var(--wood-dark);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--wood-light);
+  border-radius: 6px;
+  border: 2px solid var(--wood-dark);
+}
+
+/* ---------- Page shell ---------- */
+.library-shell {
+  min-height: 100%;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.08) 0px,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0) 40px,
+      rgba(0, 0, 0, 0.05) 42px
+    ),
+    radial-gradient(ellipse at top, #3a2415 0%, var(--wood-dark) 70%);
+}
+
+.library-header {
+  background: linear-gradient(180deg, #1e130b 0%, #2b1a10 100%);
+  border-bottom: 3px solid var(--brass);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+/* ---------- Shelf ---------- */
+.shelf-section {
+  position: relative;
+}
+
+.shelf-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(180deg, var(--brass-light), var(--brass));
+  color: var(--ink);
+  padding: 0.35rem 1rem;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.book-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 1.75rem 1rem 0;
+  min-height: 200px;
+}
+
+.shelf-plank {
+  height: 22px;
+  margin: 0 -0.5rem;
+  background: linear-gradient(180deg, var(--wood-plank-light) 0%, var(--wood-plank) 45%, var(--wood-dark) 100%);
+  border-radius: 3px;
+  box-shadow:
+    0 10px 14px -6px rgba(0, 0, 0, 0.6),
+    inset 0 2px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* ---------- Book card ---------- */
+.book-card {
+  width: 148px;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.18s ease, filter 0.18s ease;
+  transform-origin: bottom center;
+}
+
+.book-card:hover {
+  transform: translateY(-6px) rotate(-1deg);
+}
+
+.book-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 3px 6px 6px 3px;
+  overflow: hidden;
+  box-shadow:
+    -6px 0 0 -3px rgba(0, 0, 0, 0.25),
+    0 10px 16px rgba(0, 0, 0, 0.45),
+    inset 3px 0 0 rgba(255, 255, 255, 0.08);
+  background: linear-gradient(160deg, #7a5230, #4a331d);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.book-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.book-cover-placeholder {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 100%;
+  width: 100%;
+  padding: 0.75rem;
+  color: var(--parchment);
+  text-align: left;
+}
+
+.book-title-caption {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  line-height: 1.15;
+  color: var(--parchment-dark);
+  text-align: center;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: filter 0.15s ease, transform 0.1s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn-brass {
+  background: linear-gradient(180deg, var(--brass-light), var(--brass));
+  color: var(--ink);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.btn-brass:hover {
+  filter: brightness(1.08);
+}
+.btn-outline {
+  background: transparent;
+  color: var(--parchment);
+  border-color: rgba(246, 236, 217, 0.35);
+}
+.btn-outline:hover {
+  background: rgba(246, 236, 217, 0.08);
+}
+.btn-danger {
+  background: linear-gradient(180deg, #b8503f, var(--danger));
+  color: var(--parchment);
+}
+.btn-danger:hover {
+  filter: brightness(1.08);
+}
+
+/* ---------- Inputs ---------- */
+.input,
+.textarea,
+.select {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(246, 236, 217, 0.25);
+  color: var(--parchment);
+  border-radius: 6px;
+  padding: 0.55rem 0.75rem;
+  font-family: var(--font-body), Georgia, serif;
+}
+.input::placeholder,
+.textarea::placeholder {
+  color: rgba(246, 236, 217, 0.45);
+}
+.input:focus,
+.textarea:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--brass);
+  box-shadow: 0 0 0 3px rgba(201, 163, 92, 0.25);
+}
+.select option {
+  color: var(--ink);
+}
+.label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--parchment-dark);
+  margin-bottom: 0.3rem;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Modal ---------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 6, 3, 0.72);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 4vh 1rem;
+  overflow-y: auto;
+  z-index: 50;
+}
+
+.modal-panel {
+  background: linear-gradient(180deg, #2f1e12, #241609);
+  border: 1px solid rgba(201, 163, 92, 0.35);
+  border-radius: 10px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  width: 100%;
+  max-width: 32rem;
+  padding: 1.75rem;
+}
+
+/* ---------- Parchment panel (book detail) ---------- */
+.parchment-panel {
+  background: radial-gradient(ellipse at top left, #fbf3e1, #ecdfc1 80%);
+  color: var(--ink);
+  border-radius: 10px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: rgba(201, 163, 92, 0.18);
+  color: var(--brass-light);
+  border: 1px solid rgba(201, 163, 92, 0.4);
+}
