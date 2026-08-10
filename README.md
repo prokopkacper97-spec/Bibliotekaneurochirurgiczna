@@ -4,12 +4,14 @@ Prywatna biblioteka podręczników neurochirurgicznych w PDF — z okładkami (g
 automatycznie z pierwszej strony PDF lub wgrywanymi ręcznie), podziałem na grupy/kategorie
 oraz szatą graficzną stylizowaną na bibliotekę.
 
+**Wdrożenie:** https://bibliotekaneurochirurgiczna.vercel.app
+
 ## Stack technologiczny
 
 - **Next.js 16** (App Router, TypeScript) — frontend + API routes w jednej aplikacji
 - **Prisma 7** + **Postgres (Supabase)** — baza danych z metadanymi książek i grup
 - **Supabase Storage** — przechowywanie plików PDF i okładek
-- **pdfjs-dist** + **node-canvas** — generowanie miniaturki okładki z pierwszej strony PDF
+- **pdfjs-dist** + **@napi-rs/canvas** — generowanie miniaturki okładki z pierwszej strony PDF
 
 ## Wymagania
 
