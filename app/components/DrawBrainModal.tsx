@@ -21,28 +21,46 @@ const COLORS = [
 const MAX_HISTORY = 25;
 
 type Arc = [number, number, number, number, number]; // cx, cy, r, startAngle, endAngle
+type Coil = { cx: number; cy: number; r0: number; r1: number; turns: number; a: number };
 
-// A chain of arcs (normalized to a unit circle) tracing a scalloped, bumpy
-// silhouette in one continuous stroke — the classic "brain icon" look:
-// rounded lobes bulging around the top and side, in profile.
+function spiralPath(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r0: number,
+  r1: number,
+  turns: number,
+  startAngle: number
+) {
+  let a = startAngle;
+  let r = r0;
+  ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+  for (let t = 0; t <= 1; t += 0.015) {
+    a = startAngle + t * Math.PI * 2 * turns;
+    r = r0 + t * (r1 - r0);
+    ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+  }
+}
+
+// Rounded lobes chained around the top/back of the silhouette (profile
+// view, facing left) — the sharp chevron at the front and the underside
+// curve back to the temporal notch are drawn separately, around this.
 const OUTLINE: Arc[] = [
-  [-0.55, -0.55, 0.28, Math.PI * 1.1, Math.PI * 1.85],
-  [-0.05, -0.75, 0.3, Math.PI * 1.15, Math.PI * 1.95],
-  [0.45, -0.65, 0.3, Math.PI * 1.2, Math.PI * 2.0],
-  [0.85, -0.25, 0.28, Math.PI * 1.3, Math.PI * 0.15],
-  [0.9, 0.25, 0.3, Math.PI * 1.75, Math.PI * 0.55],
-  [0.5, 0.65, 0.3, Math.PI * 1.95, Math.PI * 0.7],
-  [0.05, 0.55, 0.22, Math.PI * 0.1, Math.PI * 0.95],
+  [-0.2, -0.62, 0.32, Math.PI * 1.2, Math.PI * 1.95],
+  [0.35, -0.66, 0.34, Math.PI * 1.2, Math.PI * 2.02],
+  [0.82, -0.3, 0.3, Math.PI * 1.3, Math.PI * 0.2],
+  [0.9, 0.22, 0.28, Math.PI * 1.85, Math.PI * 0.55],
 ];
 
-// Small "C"/comma-shaped gyri marks scattered inside — cx, cy, r, a0, a1.
-const COMMAS: Arc[] = [
-  [-0.25, -0.35, 0.14, 0.1, 2.3],
-  [0.15, -0.45, 0.13, 0.6, 2.9],
-  [0.5, -0.15, 0.15, 1.2, 3.6],
-  [0.0, -0.05, 0.12, 2.0, 4.3],
-  [0.6, 0.15, 0.12, 2.4, 4.6],
-  [0.2, 0.28, 0.11, 3.0, 5.2],
+// Paisley-style coil marks scattered through the interior.
+const COILS: Coil[] = [
+  { cx: -0.32, cy: -0.3, r0: 0.02, r1: 0.15, turns: 1.3, a: 0.4 },
+  { cx: 0.02, cy: -0.42, r0: 0.02, r1: 0.13, turns: 1.2, a: 1.2 },
+  { cx: 0.36, cy: -0.34, r0: 0.02, r1: 0.14, turns: 1.3, a: 2.0 },
+  { cx: 0.62, cy: -0.08, r0: 0.02, r1: 0.13, turns: 1.2, a: 0.8 },
+  { cx: 0.1, cy: -0.08, r0: 0.02, r1: 0.12, turns: 1.1, a: 2.6 },
+  { cx: 0.42, cy: 0.16, r0: 0.02, r1: 0.12, turns: 1.1, a: 1.6 },
+  { cx: -0.02, cy: 0.18, r0: 0.02, r1: 0.11, turns: 1.0, a: 3.2 },
 ];
 
 function drawGuide(ctx: CanvasRenderingContext2D) {
@@ -52,55 +70,59 @@ function drawGuide(ctx: CanvasRenderingContext2D) {
   ctx.fillRect(0, 0, S, S);
 
   ctx.save();
-  ctx.strokeStyle = "#4a3d28";
+  ctx.strokeStyle = "#3a2f1e";
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
-  ctx.globalAlpha = 0.55;
+  ctx.globalAlpha = 0.6;
 
-  const ox = S * 0.5;
+  const ox = S * 0.46;
   const oy = S * 0.46;
-  const scale = S * 0.34;
+  const scale = S * 0.36;
 
-  // Outer silhouette.
-  ctx.lineWidth = 5;
+  // Outer silhouette: sharp frontal chevron, rounded lobes across the top
+  // and back, then a simple curve along the underside to the temporal notch.
+  ctx.lineWidth = 6;
   ctx.beginPath();
-  OUTLINE.forEach(([cx, cy, r, a0, a1], i) => {
-    const x = ox + cx * scale;
-    const y = oy + cy * scale;
-    const rr = r * scale;
-    if (i === 0) ctx.moveTo(x + Math.cos(a0) * rr, y + Math.sin(a0) * rr);
-    ctx.arc(x, y, rr, a0, a1);
-  });
-  ctx.stroke();
-
-  // Temporal lobe spiral, the signature swirl tucked at the bottom-left.
-  ctx.beginPath();
-  const spiralCx = ox - 0.42 * scale;
-  const spiralCy = oy + 0.42 * scale;
-  let a = Math.PI * 0.3;
-  let r = scale * 0.04;
-  ctx.moveTo(spiralCx + Math.cos(a) * r, spiralCy + Math.sin(a) * r);
-  for (let t = 0; t <= 1; t += 0.02) {
-    a = Math.PI * 0.3 + t * Math.PI * 2.2;
-    r = scale * (0.04 + t * 0.16);
-    ctx.lineTo(spiralCx + Math.cos(a) * r, spiralCy + Math.sin(a) * r);
-  }
-  ctx.stroke();
-
-  // Comma-shaped gyri.
-  ctx.lineWidth = 4;
-  for (const [cx, cy, r, a0, a1] of COMMAS) {
-    ctx.beginPath();
+  ctx.moveTo(ox - 0.98 * scale, oy - 0.1 * scale);
+  ctx.lineTo(ox - 0.8 * scale, oy - 0.32 * scale);
+  ctx.lineTo(ox - 0.66 * scale, oy - 0.14 * scale);
+  ctx.lineTo(ox - 0.52 * scale, oy - 0.36 * scale);
+  OUTLINE.forEach(([cx, cy, r, a0, a1]) => {
     ctx.arc(ox + cx * scale, oy + cy * scale, r * scale, a0, a1);
+  });
+  ctx.quadraticCurveTo(ox + 0.5 * scale, oy + 0.58 * scale, ox + 0.2 * scale, oy + 0.5 * scale);
+  ctx.quadraticCurveTo(ox - 0.05 * scale, oy + 0.44 * scale, ox - 0.18 * scale, oy + 0.52 * scale);
+  ctx.quadraticCurveTo(ox - 0.32 * scale, oy + 0.6 * scale, ox - 0.46 * scale, oy + 0.44 * scale);
+  ctx.stroke();
+
+  // Cerebellum: a small bump tucked under the back, with diagonal hatching.
+  const cbx = ox + 0.78 * scale;
+  const cby = oy + 0.5 * scale;
+  const cbr = 0.15 * scale;
+  ctx.beginPath();
+  ctx.arc(cbx, cby, cbr, 0, Math.PI * 1.5);
+  ctx.stroke();
+  ctx.lineWidth = 3.5;
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath();
+    ctx.moveTo(cbx - cbr * 0.6 + i * cbr * 0.35, cby - cbr * 0.55);
+    ctx.lineTo(cbx - cbr * 0.6 + i * cbr * 0.35 + cbr * 0.35, cby + cbr * 0.55);
     ctx.stroke();
   }
 
-  // Brainstem.
-  ctx.lineWidth = 5;
+  // Temporal lobe: the largest, signature spiral.
+  ctx.lineWidth = 6;
   ctx.beginPath();
-  ctx.moveTo(ox + 0.05 * scale, oy + 0.72 * scale);
-  ctx.quadraticCurveTo(ox + 0.02 * scale, oy + 0.92 * scale, ox + 0.1 * scale, oy + 1.05 * scale);
+  spiralPath(ctx, ox - 0.28 * scale, oy + 0.3 * scale, 0.03 * scale, 0.22 * scale, 1.7, Math.PI * 0.2);
   ctx.stroke();
+
+  // Interior paisley coils, matching the outline's stroke weight.
+  ctx.lineWidth = 5;
+  for (const c of COILS) {
+    ctx.beginPath();
+    spiralPath(ctx, ox + c.cx * scale, oy + c.cy * scale, c.r0 * scale, c.r1 * scale, c.turns, c.a);
+    ctx.stroke();
+  }
 
   ctx.restore();
 }
