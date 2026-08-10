@@ -3,30 +3,53 @@
 import { useState, FormEvent } from "react";
 import type { Book, Group } from "@/lib/types";
 
+type UploadResult = { ok: boolean; data: unknown };
+
+/**
+ * Uploads with real progress via XMLHttpRequest where possible. Some
+ * browsers (notably older Safari/WebKit) can throw synchronously while
+ * setting up the request; in that case we fall back to a plain fetch so the
+ * upload still works, just without a real percentage.
+ */
 function uploadWithProgress(
   url: string,
   formData: FormData,
   onProgress: (percent: number) => void
-): Promise<{ ok: boolean; data: unknown }> {
+): Promise<UploadResult> {
   return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", url);
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) {
-        onProgress(Math.round((e.loaded / e.total) * 100));
-      }
-    };
-    xhr.onload = () => {
-      let data: unknown = null;
-      try {
-        data = JSON.parse(xhr.responseText);
-      } catch {
-        // non-JSON response, leave data as null
-      }
-      resolve({ ok: xhr.status >= 200 && xhr.status < 300, data });
-    };
-    xhr.onerror = () => reject(new Error("Błąd sieci podczas wysyłania pliku."));
-    xhr.send(formData);
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", url, true);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      };
+      xhr.onload = () => {
+        let data: unknown = null;
+        try {
+          data = JSON.parse(xhr.responseText);
+        } catch {
+          // non-JSON response, leave data as null
+        }
+        resolve({ ok: xhr.status >= 200 && xhr.status < 300, data });
+      };
+      xhr.onerror = () => reject(new Error("Błąd sieci podczas wysyłania pliku."));
+      xhr.send(formData);
+    } catch {
+      // Fall back to a plain fetch (no percentage, but still works).
+      fetch(url, { method: "POST", body: formData })
+        .then(async (res) => {
+          let data: unknown = null;
+          try {
+            data = await res.json();
+          } catch {
+            // non-JSON response, leave data as null
+          }
+          resolve({ ok: res.ok, data });
+        })
+        .catch(reject);
+    }
   });
 }
 
@@ -73,7 +96,8 @@ export default function AddBookModal({
       form.set("file", file);
       if (cover) form.set("cover", cover);
 
-      const { ok, data } = await uploadWithProgress("/api/books", form, (percent) => {
+      const uploadUrl = new URL("/api/books", window.location.origin).toString();
+      const { ok, data } = await uploadWithProgress(uploadUrl, form, (percent) => {
         setProgress(percent);
         if (percent >= 100) setPhase("processing");
       });
@@ -81,7 +105,9 @@ export default function AddBookModal({
       if (!ok) throw new Error((body as { error?: string })?.error ?? "Nie udało się dodać książki.");
       onCreated(body as Book);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Wystąpił błąd.");
+      const name = err instanceof Error ? err.name : "";
+      const message = err instanceof Error ? err.message : "Wystąpił błąd.";
+      setError(name && name !== "Error" ? `${name}: ${message}` : message);
       setPhase("idle");
     }
   }
@@ -92,8 +118,8 @@ export default function AddBookModal({
         <h2 className="font-display text-2xl font-bold mb-4 text-[var(--brass-light)]">
           Dodaj książkę
         </h2>
-        <fieldset disabled={submitting} className="contents">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <fieldset disabled={submitting} className="space-y-4 border-0 p-0 m-0 min-w-0">
             <div>
               <label className="label">Tytuł *</label>
               <input
@@ -153,39 +179,39 @@ export default function AddBookModal({
                 strony PDF.
               </p>
             </div>
+          </fieldset>
 
-            {submitting && (
-              <div className="space-y-2">
-                <div className="h-2 w-full rounded-full bg-black/30 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-[var(--brass)] transition-[width] duration-150"
-                    style={{ width: `${phase === "processing" ? 100 : progress}%` }}
-                  />
-                </div>
-                <p className="text-xs text-[var(--parchment-dark)]">
-                  {phase === "uploading"
-                    ? `Wysyłanie pliku… ${progress}%`
-                    : "Przetwarzanie i generowanie okładki…"}
-                </p>
+          {submitting && (
+            <div className="space-y-2">
+              <div className="h-2 w-full rounded-full bg-black/30 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-[var(--brass)] transition-[width] duration-150"
+                  style={{ width: `${phase === "processing" ? 100 : progress}%` }}
+                />
               </div>
-            )}
-
-            {error && <p className="text-sm text-red-300">{error}</p>}
-
-            <div className="flex justify-end gap-3 pt-2">
-              <button type="button" className="btn btn-outline" onClick={onClose} disabled={submitting}>
-                Anuluj
-              </button>
-              <button type="submit" className="btn btn-brass" disabled={submitting}>
+              <p className="text-xs text-[var(--parchment-dark)]">
                 {phase === "uploading"
-                  ? `Wysyłanie… ${progress}%`
-                  : phase === "processing"
-                    ? "Przetwarzanie…"
-                    : "Dodaj do biblioteki"}
-              </button>
+                  ? `Wysyłanie pliku… ${progress}%`
+                  : "Przetwarzanie i generowanie okładki…"}
+              </p>
             </div>
-          </form>
-        </fieldset>
+          )}
+
+          {error && <p className="text-sm text-red-300">{error}</p>}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" className="btn btn-outline" onClick={onClose} disabled={submitting}>
+              Anuluj
+            </button>
+            <button type="submit" className="btn btn-brass" disabled={submitting}>
+              {phase === "uploading"
+                ? `Wysyłanie… ${progress}%`
+                : phase === "processing"
+                  ? "Przetwarzanie…"
+                  : "Dodaj do biblioteki"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
