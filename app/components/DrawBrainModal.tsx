@@ -20,52 +20,29 @@ const COLORS = [
 ];
 const MAX_HISTORY = 25;
 
-type Point = [number, number];
+type Arc = [number, number, number, number, number]; // cx, cy, r, startAngle, endAngle
 
-// Smooth open curve through a set of points, using each point as a curve
-// control point and the midpoints between neighbors as on-curve anchors —
-// the standard trick for turning a rough polygon into an organic blob line.
-function smoothOpen(ctx: CanvasRenderingContext2D, points: Point[]) {
-  ctx.moveTo(points[0][0], points[0][1]);
-  for (let i = 1; i < points.length - 1; i++) {
-    const mid: Point = [(points[i][0] + points[i + 1][0]) / 2, (points[i][1] + points[i + 1][1]) / 2];
-    ctx.quadraticCurveTo(points[i][0], points[i][1], mid[0], mid[1]);
-  }
-  const last = points[points.length - 1];
-  const prev = points[points.length - 2];
-  ctx.quadraticCurveTo(prev[0], prev[1], last[0], last[1]);
-}
+// A chain of arcs (normalized to a unit circle) tracing a scalloped, bumpy
+// silhouette in one continuous stroke — the classic "brain icon" look:
+// rounded lobes bulging around the top and side, in profile.
+const OUTLINE: Arc[] = [
+  [-0.55, -0.55, 0.28, Math.PI * 1.1, Math.PI * 1.85],
+  [-0.05, -0.75, 0.3, Math.PI * 1.15, Math.PI * 1.95],
+  [0.45, -0.65, 0.3, Math.PI * 1.2, Math.PI * 2.0],
+  [0.85, -0.25, 0.28, Math.PI * 1.3, Math.PI * 0.15],
+  [0.9, 0.25, 0.3, Math.PI * 1.75, Math.PI * 0.55],
+  [0.5, 0.65, 0.3, Math.PI * 1.95, Math.PI * 0.7],
+  [0.05, 0.55, 0.22, Math.PI * 0.1, Math.PI * 0.95],
+];
 
-function smoothClosed(ctx: CanvasRenderingContext2D, points: Point[]) {
-  const first = points[0];
-  const lastP = points[points.length - 1];
-  ctx.moveTo((first[0] + lastP[0]) / 2, (first[1] + lastP[1]) / 2);
-  for (let i = 0; i < points.length; i++) {
-    const p1 = points[i];
-    const p2 = points[(i + 1) % points.length];
-    const mid: Point = [(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2];
-    ctx.quadraticCurveTo(p1[0], p1[1], mid[0], mid[1]);
-  }
-}
-
-// One hemisphere's outer edge (top view), normalized to a unit radius:
-// pronounced, irregular lobes read as "brain" far better than a smooth
-// oval does — real gyri are lumpy and asymmetric, not a neat sine wave.
-const HEMISPHERE: Point[] = [
-  [0.05, -1.0],
-  [0.42, -0.88],
-  [0.32, -0.62],
-  [0.68, -0.58],
-  [0.58, -0.28],
-  [0.98, -0.22],
-  [0.8, 0.08],
-  [1.0, 0.32],
-  [0.68, 0.42],
-  [0.72, 0.68],
-  [0.38, 0.62],
-  [0.3, 0.92],
-  [0.08, 0.78],
-  [0, 1.0],
+// Small "C"/comma-shaped gyri marks scattered inside — cx, cy, r, a0, a1.
+const COMMAS: Arc[] = [
+  [-0.25, -0.35, 0.14, 0.1, 2.3],
+  [0.15, -0.45, 0.13, 0.6, 2.9],
+  [0.5, -0.15, 0.15, 1.2, 3.6],
+  [0.0, -0.05, 0.12, 2.0, 4.3],
+  [0.6, 0.15, 0.12, 2.4, 4.6],
+  [0.2, 0.28, 0.11, 3.0, 5.2],
 ];
 
 function drawGuide(ctx: CanvasRenderingContext2D) {
@@ -75,75 +52,54 @@ function drawGuide(ctx: CanvasRenderingContext2D) {
   ctx.fillRect(0, 0, S, S);
 
   ctx.save();
-  ctx.strokeStyle = "#c2b184";
-  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = "#4a3d28";
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
-  ctx.globalAlpha = 0.85;
+  ctx.globalAlpha = 0.55;
 
-  const cx = S * 0.5;
-  const cy = S * 0.46;
-  const rx = S * 0.3;
-  const ry = S * 0.22;
-  const gap = S * 0.012;
+  const ox = S * 0.5;
+  const oy = S * 0.46;
+  const scale = S * 0.34;
 
-  const rightPts = HEMISPHERE.map(([x, y]) => [cx + gap + x * rx, cy + y * ry] as Point);
-  const leftPts = HEMISPHERE.map(([x, y]) => [cx - gap - x * rx, cy + y * ry] as Point);
-
+  // Outer silhouette.
+  ctx.lineWidth = 5;
   ctx.beginPath();
-  smoothOpen(ctx, rightPts);
+  OUTLINE.forEach(([cx, cy, r, a0, a1], i) => {
+    const x = ox + cx * scale;
+    const y = oy + cy * scale;
+    const rr = r * scale;
+    if (i === 0) ctx.moveTo(x + Math.cos(a0) * rr, y + Math.sin(a0) * rr);
+    ctx.arc(x, y, rr, a0, a1);
+  });
   ctx.stroke();
 
+  // Temporal lobe spiral, the signature swirl tucked at the bottom-left.
   ctx.beginPath();
-  smoothOpen(ctx, leftPts);
+  const spiralCx = ox - 0.42 * scale;
+  const spiralCy = oy + 0.42 * scale;
+  let a = Math.PI * 0.3;
+  let r = scale * 0.04;
+  ctx.moveTo(spiralCx + Math.cos(a) * r, spiralCy + Math.sin(a) * r);
+  for (let t = 0; t <= 1; t += 0.02) {
+    a = Math.PI * 0.3 + t * Math.PI * 2.2;
+    r = scale * (0.04 + t * 0.16);
+    ctx.lineTo(spiralCx + Math.cos(a) * r, spiralCy + Math.sin(a) * r);
+  }
   ctx.stroke();
 
-  // Longitudinal fissure down the middle.
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - ry);
-  ctx.quadraticCurveTo(cx - S * 0.01, cy, cx, cy + ry);
-  ctx.stroke();
-
-  // Gyri: curves roughly parallel to (and inset from) the outer boundary —
-  // this reads as brain folds far better than lines radiating from center.
-  ctx.globalAlpha = 0.5;
-  ctx.lineWidth = 1.6;
-  for (const side of [1, -1]) {
-    const inner = HEMISPHERE.map(([x, y]) => [cx + side * (gap + x * rx * 0.68), cy + y * ry * 0.68] as Point);
+  // Comma-shaped gyri.
+  ctx.lineWidth = 4;
+  for (const [cx, cy, r, a0, a1] of COMMAS) {
     ctx.beginPath();
-    smoothOpen(ctx, inner.slice(1, -1));
-    ctx.stroke();
-
-    const inner2 = HEMISPHERE.map(([x, y]) => [cx + side * (gap + x * rx * 0.85), cy + y * ry * 0.85] as Point);
-    ctx.beginPath();
-    smoothOpen(ctx, inner2.slice(2, 8));
+    ctx.arc(ox + cx * scale, oy + cy * scale, r * scale, a0, a1);
     ctx.stroke();
   }
-
-  // Cerebellum: a smaller bumpy blob tucked under the main mass.
-  ctx.globalAlpha = 0.85;
-  ctx.lineWidth = 2.2;
-  const bcx = cx;
-  const bcy = cy + ry * 0.88;
-  const brx = S * 0.16;
-  const bry = S * 0.08;
-  const cerebellumPts: Point[] = [];
-  const bumps = 10;
-  for (let i = 0; i < bumps; i++) {
-    const a = (i / bumps) * Math.PI * 2;
-    const wob = 1 + 0.14 * Math.sin(a * 3.5 + 0.5);
-    cerebellumPts.push([bcx + Math.cos(a) * brx * wob, bcy + Math.sin(a) * bry * wob * 0.7]);
-  }
-  ctx.beginPath();
-  smoothClosed(ctx, cerebellumPts);
-  ctx.closePath();
-  ctx.stroke();
 
   // Brainstem.
+  ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.moveTo(bcx - S * 0.015, bcy + bry * 0.5);
-  ctx.quadraticCurveTo(bcx, bcy + S * 0.1, bcx + S * 0.02, bcy + S * 0.14);
-  ctx.lineTo(bcx + S * 0.065, bcy + S * 0.135);
+  ctx.moveTo(ox + 0.05 * scale, oy + 0.72 * scale);
+  ctx.quadraticCurveTo(ox + 0.02 * scale, oy + 0.92 * scale, ox + 0.1 * scale, oy + 1.05 * scale);
   ctx.stroke();
 
   ctx.restore();
