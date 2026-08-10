@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { storage } from "@/lib/storage";
-import { renderFirstPageToJpeg } from "@/lib/pdfCover";
+import { renderFirstPageToPng } from "@/lib/pdfCover";
+
+function titleFromFileName(fileName: string): string {
+  return fileName
+    .replace(/\.pdf$/i, "")
+    .replace(/[_\-.]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -36,13 +44,13 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
 
   const id = String(body.id ?? "").trim();
-  const title = String(body.title ?? "").trim();
   const author = String(body.author ?? "").trim() || null;
   const description = String(body.description ?? "").trim() || null;
   const groupId = String(body.groupId ?? "").trim() || null;
   const fileName = String(body.fileName ?? "").trim() || "dokument.pdf";
   const fileSize = Number.isFinite(body.fileSize) ? Number(body.fileSize) : 0;
   const hasCustomCover = Boolean(body.hasCustomCover);
+  const title = String(body.title ?? "").trim() || titleFromFileName(fileName);
 
   if (!id) {
     return NextResponse.json({ error: "Brak identyfikatora przesyłania." }, { status: 400 });
@@ -69,8 +77,8 @@ export async function POST(req: NextRequest) {
 
   if (!hasCustomCover) {
     try {
-      const jpeg = await renderFirstPageToJpeg(pdfBuffer);
-      await storage.saveCover(id, jpeg);
+      const png = await renderFirstPageToPng(pdfBuffer);
+      await storage.saveCover(id, png);
     } catch (err) {
       // No cover could be generated; the UI falls back to a placeholder.
       console.error("Cover generation failed for book", id, err);

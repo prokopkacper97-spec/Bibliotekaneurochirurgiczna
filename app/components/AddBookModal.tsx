@@ -130,14 +130,16 @@ export default function AddBookModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <fieldset disabled={submitting} className="space-y-4 border-0 p-0 m-0 min-w-0">
             <div>
-              <label className="label">Tytuł *</label>
+              <label className="label">Tytuł</label>
               <input
                 className="input"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                required
                 placeholder="np. Neurochirurgia. Podręcznik"
               />
+              <p className="text-xs mt-1 text-[var(--parchment-dark)] opacity-80">
+                Jeśli zostawisz puste, użyjemy nazwy pliku PDF.
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

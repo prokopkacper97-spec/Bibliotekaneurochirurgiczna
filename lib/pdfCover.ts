@@ -13,7 +13,9 @@ g.DOMMatrix ??= DOMMatrix;
 g.ImageData ??= ImageData;
 g.Path2D ??= Path2D;
 
-const COVER_WIDTH = 480;
+// Rendered well above typical on-screen display size (card thumbnails are
+// ~150px, the detail page ~280px) so covers stay sharp on high-DPI screens.
+const COVER_WIDTH = 1200;
 
 class NodeCanvasFactory {
   create(width: number, height: number) {
@@ -42,7 +44,7 @@ class NodeCanvasFactory {
   }
 }
 
-export async function renderFirstPageToJpeg(pdfData: Buffer): Promise<Buffer> {
+export async function renderFirstPageToPng(pdfData: Buffer): Promise<Buffer> {
   // The legacy Node build works without a DOM/worker environment.
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   // Resolved against the project root rather than require.resolve(), which
@@ -76,7 +78,9 @@ export async function renderFirstPageToJpeg(pdfData: Buffer): Promise<Buffer> {
       viewport,
     }).promise;
 
-    return canvas.toBuffer("image/jpeg", 0.85);
+    // PNG (lossless) — JPEG's chroma subsampling and DCT blocking cause
+    // visible ringing/ghosting around sharp text edges on flat-color covers.
+    return canvas.toBuffer("image/png");
   } finally {
     await loadingTask.destroy();
   }

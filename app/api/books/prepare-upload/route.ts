@@ -13,7 +13,7 @@ export async function POST() {
 
   const [pdfResult, coverResult] = await Promise.all([
     bucket.createSignedUploadUrl(`books/${id}.pdf`),
-    bucket.createSignedUploadUrl(`covers/${id}.jpg`),
+    bucket.createSignedUploadUrl(`covers/${id}.png`),
   ]);
 
   if (pdfResult.error || !pdfResult.data) {

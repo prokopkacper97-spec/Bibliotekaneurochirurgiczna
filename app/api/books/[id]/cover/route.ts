@@ -13,7 +13,7 @@ export async function GET(
   }
   return new NextResponse(new Uint8Array(data), {
     headers: {
-      "Content-Type": "image/jpeg",
+      "Content-Type": "image/png",
       "Cache-Control": "private, max-age=300",
     },
   });

@@ -5,7 +5,7 @@ function pdfPath(id: string) {
 }
 
 function coverPath(id: string) {
-  return `covers/${id}.jpg`;
+  return `covers/${id}.png`;
 }
 
 const bucket = () => supabase.storage.from(STORAGE_BUCKET);
@@ -28,7 +28,7 @@ export const storage = {
   },
   async saveCover(id: string, data: Buffer) {
     const { error } = await bucket().upload(coverPath(id), data, {
-      contentType: "image/jpeg",
+      contentType: "image/png",
       upsert: true,
     });
     if (error) throw error;
