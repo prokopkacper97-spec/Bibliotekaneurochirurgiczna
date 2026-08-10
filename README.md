@@ -37,11 +37,11 @@ potrzebny jest projekt Supabase.
 cp .env.example .env
 ```
 
-6. Wygeneruj tabele w bazie (za pierwszym razem i po każdej zmianie `prisma/schema.prisma`):
-
-```bash
-npx prisma migrate dev
-```
+> **Uwaga:** jeśli Twoja sieć/VPN blokuje bezpośrednie połączenia na porty Postgresa
+> (5432/6543) — co jest częste w sieciach firmowych — `npx prisma migrate dev` lokalnie się
+> nie połączy (błąd `P1001`). W tym repo migracje uruchamiają się automatycznie podczas builda
+> na Vercelu (patrz sekcja „Wdrożenie na Vercel”), więc nie jest to blokujące. Sama warstwa
+> Supabase Storage działa przez HTTPS i nie ma tego ograniczenia.
 
 ## Uruchomienie lokalne
 
@@ -83,12 +83,8 @@ npm run start
 3. W ustawieniach projektu (*Settings → Environment Variables*) dodaj te same zmienne co w
    `.env`: `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
    `SUPABASE_STORAGE_BUCKET`.
-4. Deploy. Vercel sam wykryje Next.js; `prisma generate` uruchamia się automatycznie dzięki
-   skryptowi `postinstall` w `package.json`.
-5. Migracje bazy (`prisma migrate deploy`) trzeba uruchomić raz przy pierwszym wdrożeniu i po
-   każdej zmianie schematu — najprościej lokalnie, wskazując na tę samą bazę Supabase:
-   ```bash
-   npx prisma migrate deploy
-   ```
+4. Deploy. Vercel sam wykryje Next.js. Podczas builda automatycznie uruchamiają się:
+   `prisma generate` (skrypt `postinstall`) oraz `prisma migrate deploy` (część skryptu
+   `build`) — tabele w Supabase tworzą się/aktualizują same, bez ręcznej ingerencji.
 
 ## built by Kacper Prokop
