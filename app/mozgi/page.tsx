@@ -99,7 +99,8 @@ export default function BrainGalleryPage() {
           <img
             key={b.id}
             src={`/api/brains/${b.id}/image`}
-            alt="Narysowany mózg"
+            alt={b.name ? `Mózg: ${b.name}` : "Narysowany mózg"}
+            title={b.name ?? undefined}
             className="flying-brain"
             style={styles.get(b.id)}
           />

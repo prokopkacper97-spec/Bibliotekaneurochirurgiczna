@@ -29,9 +29,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Rysunek jest za duży." }, { status: 400 });
   }
 
+  const name = String(body.name ?? "").trim().slice(0, 60) || null;
+
   const id = nanoid();
   await storage.saveBrain(id, buffer);
-  const brain = await prisma.brain.create({ data: { id } });
+  const brain = await prisma.brain.create({ data: { id, name } });
 
   return NextResponse.json(brain, { status: 201 });
 }

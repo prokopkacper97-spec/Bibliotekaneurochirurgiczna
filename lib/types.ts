@@ -8,6 +8,7 @@ export interface Group {
 
 export interface Brain {
   id: string;
+  name: string | null;
   createdAt: string;
 }
 
