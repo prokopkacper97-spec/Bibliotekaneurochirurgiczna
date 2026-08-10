@@ -116,6 +116,17 @@ export default function BrainGalleryPage() {
           }}
         />
       )}
+
+      <div className="fixed bottom-4 right-4 z-20 rounded-lg overflow-hidden shadow-lg border border-[rgba(201,163,92,0.4)]">
+        <iframe
+          width="200"
+          height="113"
+          src="https://www.youtube.com/embed/jqTY8rGILfs?autoplay=1&mute=1&loop=1&playlist=jqTY8rGILfs&rel=0"
+          title="Muzyka w tle"
+          allow="autoplay; encrypted-media"
+          className="block"
+        />
+      </div>
     </div>
   );
 }
