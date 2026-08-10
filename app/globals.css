@@ -288,3 +288,45 @@ h3,
   color: var(--brass-light);
   border: 1px solid rgba(201, 163, 92, 0.4);
 }
+
+/* ---------- Brain gallery ---------- */
+.brain-sky {
+  background: linear-gradient(180deg, #bfe0f7 0%, #dff1fb 45%, #f3f8fc 100%);
+  min-height: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+  .brain-sky {
+    background: linear-gradient(180deg, #1b2a41 0%, #24405e 45%, #2f5779 100%);
+  }
+}
+
+@keyframes float-brain {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(var(--dx1), var(--dy1)) rotate(var(--dr1));
+  }
+  50% {
+    transform: translate(var(--dx2), var(--dy2)) rotate(var(--dr2));
+  }
+  75% {
+    transform: translate(var(--dx3), var(--dy3)) rotate(var(--dr3));
+  }
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+}
+
+.flying-brain {
+  position: absolute;
+  border-radius: 9999px;
+  object-fit: cover;
+  background: #fdfaf3;
+  box-shadow: 0 8px 20px rgba(20, 40, 70, 0.25);
+  animation-name: float-brain;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}

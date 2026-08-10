@@ -6,6 +6,11 @@ export interface Group {
   _count?: { books: number };
 }
 
+export interface Brain {
+  id: string;
+  createdAt: string;
+}
+
 export interface Book {
   id: string;
   title: string;

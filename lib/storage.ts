@@ -8,6 +8,10 @@ function coverPath(id: string) {
   return `covers/${id}.png`;
 }
 
+function brainPath(id: string) {
+  return `brains/${id}.png`;
+}
+
 const bucket = () => supabase.storage.from(STORAGE_BUCKET);
 
 export const storage = {
@@ -55,5 +59,17 @@ export const storage = {
   },
   async deleteCover(id: string) {
     await bucket().remove([coverPath(id)]);
+  },
+  async saveBrain(id: string, data: Buffer) {
+    const { error } = await bucket().upload(brainPath(id), data, {
+      contentType: "image/png",
+      upsert: true,
+    });
+    if (error) throw error;
+  },
+  async readBrain(id: string): Promise<Buffer | null> {
+    const { data, error } = await bucket().download(brainPath(id));
+    if (error || !data) return null;
+    return Buffer.from(await data.arrayBuffer());
   },
 };

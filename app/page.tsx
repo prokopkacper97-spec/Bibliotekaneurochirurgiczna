@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import type { Book, Group } from "@/lib/types";
 import BookCard from "@/app/components/BookCard";
 import AddBookModal from "@/app/components/AddBookModal";
@@ -77,6 +78,9 @@ export default function Home() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
+            <Link href="/mozgi" className="btn btn-outline">
+              🧠 Galeria mózgów
+            </Link>
             <button className="btn btn-outline" onClick={() => setShowGroupModal(true)}>
               Zarządzaj grupami
             </button>
@@ -133,7 +137,6 @@ export default function Home() {
           onClose={() => setShowAddModal(false)}
           onCreated={(book) => {
             setBooks((prev) => [...prev, book]);
-            setShowAddModal(false);
           }}
         />
       )}

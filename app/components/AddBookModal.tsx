@@ -159,12 +159,7 @@ export default function AddBookModal({
   }
 
   function handleDone() {
-    if (hasErrors) {
-      // Keep only the failed ones selected, so the user can retry just those.
-      onClose();
-    } else {
-      onClose();
-    }
+    onClose();
   }
 
   return (
