@@ -20,49 +20,10 @@ const COLORS = [
 ];
 const MAX_HISTORY = 25;
 
-type Arc = [number, number, number, number, number]; // cx, cy, r, startAngle, endAngle
-type Coil = { cx: number; cy: number; r0: number; r1: number; turns: number; a: number };
-
-function spiralPath(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  r0: number,
-  r1: number,
-  turns: number,
-  startAngle: number
-) {
-  let a = startAngle;
-  let r = r0;
-  ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-  for (let t = 0; t <= 1; t += 0.015) {
-    a = startAngle + t * Math.PI * 2 * turns;
-    r = r0 + t * (r1 - r0);
-    ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-  }
-}
-
-// Rounded lobes chained around the top/back of the silhouette (profile
-// view, facing left) — the sharp chevron at the front and the underside
-// curve back to the temporal notch are drawn separately, around this.
-const OUTLINE: Arc[] = [
-  [-0.2, -0.62, 0.32, Math.PI * 1.2, Math.PI * 1.95],
-  [0.35, -0.66, 0.34, Math.PI * 1.2, Math.PI * 2.02],
-  [0.82, -0.3, 0.3, Math.PI * 1.3, Math.PI * 0.2],
-  [0.9, 0.22, 0.28, Math.PI * 1.85, Math.PI * 0.55],
-];
-
-// Paisley-style coil marks scattered through the interior.
-const COILS: Coil[] = [
-  { cx: -0.32, cy: -0.3, r0: 0.02, r1: 0.15, turns: 1.3, a: 0.4 },
-  { cx: 0.02, cy: -0.42, r0: 0.02, r1: 0.13, turns: 1.2, a: 1.2 },
-  { cx: 0.36, cy: -0.34, r0: 0.02, r1: 0.14, turns: 1.3, a: 2.0 },
-  { cx: 0.62, cy: -0.08, r0: 0.02, r1: 0.13, turns: 1.2, a: 0.8 },
-  { cx: 0.1, cy: -0.08, r0: 0.02, r1: 0.12, turns: 1.1, a: 2.6 },
-  { cx: 0.42, cy: 0.16, r0: 0.02, r1: 0.12, turns: 1.1, a: 1.6 },
-  { cx: -0.02, cy: 0.18, r0: 0.02, r1: 0.11, turns: 1.0, a: 3.2 },
-];
-
+// Rather than hand-approximating a brain drawing, use the actual 🧠 emoji
+// as the guide — every OS/browser ships a proper full-color brain
+// illustration for it, so this is both simpler and truer to the reference
+// than any hand-drawn path could be.
 function drawGuide(ctx: CanvasRenderingContext2D) {
   const S = CANVAS_SIZE;
   ctx.clearRect(0, 0, S, S);
@@ -70,60 +31,11 @@ function drawGuide(ctx: CanvasRenderingContext2D) {
   ctx.fillRect(0, 0, S, S);
 
   ctx.save();
-  ctx.strokeStyle = "#3a2f1e";
-  ctx.lineJoin = "round";
-  ctx.lineCap = "round";
   ctx.globalAlpha = 0.6;
-
-  const ox = S * 0.46;
-  const oy = S * 0.46;
-  const scale = S * 0.36;
-
-  // Outer silhouette: sharp frontal chevron, rounded lobes across the top
-  // and back, then a simple curve along the underside to the temporal notch.
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.moveTo(ox - 0.98 * scale, oy - 0.1 * scale);
-  ctx.lineTo(ox - 0.8 * scale, oy - 0.32 * scale);
-  ctx.lineTo(ox - 0.66 * scale, oy - 0.14 * scale);
-  ctx.lineTo(ox - 0.52 * scale, oy - 0.36 * scale);
-  OUTLINE.forEach(([cx, cy, r, a0, a1]) => {
-    ctx.arc(ox + cx * scale, oy + cy * scale, r * scale, a0, a1);
-  });
-  ctx.quadraticCurveTo(ox + 0.5 * scale, oy + 0.58 * scale, ox + 0.2 * scale, oy + 0.5 * scale);
-  ctx.quadraticCurveTo(ox - 0.05 * scale, oy + 0.44 * scale, ox - 0.18 * scale, oy + 0.52 * scale);
-  ctx.quadraticCurveTo(ox - 0.32 * scale, oy + 0.6 * scale, ox - 0.46 * scale, oy + 0.44 * scale);
-  ctx.stroke();
-
-  // Cerebellum: a small bump tucked under the back, with diagonal hatching.
-  const cbx = ox + 0.78 * scale;
-  const cby = oy + 0.5 * scale;
-  const cbr = 0.15 * scale;
-  ctx.beginPath();
-  ctx.arc(cbx, cby, cbr, 0, Math.PI * 1.5);
-  ctx.stroke();
-  ctx.lineWidth = 3.5;
-  for (let i = -2; i <= 2; i++) {
-    ctx.beginPath();
-    ctx.moveTo(cbx - cbr * 0.6 + i * cbr * 0.35, cby - cbr * 0.55);
-    ctx.lineTo(cbx - cbr * 0.6 + i * cbr * 0.35 + cbr * 0.35, cby + cbr * 0.55);
-    ctx.stroke();
-  }
-
-  // Temporal lobe: the largest, signature spiral.
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  spiralPath(ctx, ox - 0.28 * scale, oy + 0.3 * scale, 0.03 * scale, 0.22 * scale, 1.7, Math.PI * 0.2);
-  ctx.stroke();
-
-  // Interior paisley coils, matching the outline's stroke weight.
-  ctx.lineWidth = 5;
-  for (const c of COILS) {
-    ctx.beginPath();
-    spiralPath(ctx, ox + c.cx * scale, oy + c.cy * scale, c.r0 * scale, c.r1 * scale, c.turns, c.a);
-    ctx.stroke();
-  }
-
+  ctx.font = `${Math.round(S * 0.72)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("🧠", S / 2, S / 2 + S * 0.03);
   ctx.restore();
 }
 
