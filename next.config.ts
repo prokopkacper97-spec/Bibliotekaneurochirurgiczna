@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["canvas", "pdfjs-dist"],
+  serverExternalPackages: ["@napi-rs/canvas", "pdfjs-dist"],
   // pdfjs-dist loads its worker script and standard fonts dynamically at
   // runtime, so Next's output file tracing can't discover them statically —
   // force them into the serverless function bundle explicitly.

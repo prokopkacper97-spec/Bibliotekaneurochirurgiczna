@@ -1,13 +1,17 @@
-import { createCanvas, DOMMatrix, ImageData } from "canvas";
+import { createCanvas, DOMMatrix, ImageData, Path2D } from "@napi-rs/canvas";
 import path from "path";
 
-// pdfjs-dist's renderer expects a few browser globals to exist.
+// pdfjs-dist's renderer expects a few browser globals to exist. Path2D in
+// particular is required for path fills/clips; without it pdfjs throws
+// "Path2D is not defined" mid-render.
 const g = globalThis as unknown as {
   DOMMatrix?: unknown;
   ImageData?: unknown;
+  Path2D?: unknown;
 };
 g.DOMMatrix ??= DOMMatrix;
 g.ImageData ??= ImageData;
+g.Path2D ??= Path2D;
 
 const COVER_WIDTH = 480;
 
@@ -72,7 +76,7 @@ export async function renderFirstPageToJpeg(pdfData: Buffer): Promise<Buffer> {
       viewport,
     }).promise;
 
-    return canvas.toBuffer("image/jpeg", { quality: 0.85 });
+    return canvas.toBuffer("image/jpeg", 0.85);
   } finally {
     await loadingTask.destroy();
   }
