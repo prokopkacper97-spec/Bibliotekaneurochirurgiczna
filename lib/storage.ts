@@ -26,6 +26,21 @@ export const storage = {
   async deletePdf(id: string) {
     await bucket().remove([pdfPath(id)]);
   },
+  /**
+   * A temporary URL the browser can load the PDF from directly, bypassing
+   * our Vercel function entirely — needed because that function would
+   * otherwise have to buffer the whole file in memory before responding,
+   * which is far too slow (and unreliable) for 50-150MB textbooks.
+   */
+  async getPdfSignedUrl(id: string, downloadFileName?: string): Promise<string> {
+    const { data, error } = await bucket().createSignedUrl(
+      pdfPath(id),
+      3600,
+      downloadFileName ? { download: downloadFileName } : undefined
+    );
+    if (error || !data) throw error ?? new Error(`Could not sign URL for PDF: ${id}`);
+    return data.signedUrl;
+  },
   async saveCover(id: string, data: Buffer) {
     const { error } = await bucket().upload(coverPath(id), data, {
       contentType: "image/png",

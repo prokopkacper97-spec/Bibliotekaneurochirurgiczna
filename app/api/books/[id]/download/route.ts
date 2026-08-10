@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { storage } from "@/lib/storage";
-import { contentDisposition } from "@/lib/contentDisposition";
 
 export async function GET(
   _req: NextRequest,
@@ -13,9 +12,9 @@ export async function GET(
     return NextResponse.json({ error: "Nie znaleziono książki." }, { status: 404 });
   }
 
-  let data: Buffer;
+  let signedUrl: string;
   try {
-    data = await storage.readPdf(id);
+    signedUrl = await storage.getPdfSignedUrl(id, `${book.title}.pdf`);
   } catch {
     return NextResponse.json({ error: "Plik PDF nie został znaleziony." }, { status: 404 });
   }
@@ -25,11 +24,5 @@ export async function GET(
     data: { downloadCount: { increment: 1 } },
   });
 
-  return new NextResponse(new Uint8Array(data), {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": contentDisposition("attachment", `${book.title}.pdf`),
-      "Content-Length": String(data.byteLength),
-    },
-  });
+  return NextResponse.redirect(signedUrl);
 }
