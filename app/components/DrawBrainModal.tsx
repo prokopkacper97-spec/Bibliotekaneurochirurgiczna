@@ -26,12 +26,12 @@ const MAX_HISTORY = 25;
 // than any hand-drawn path could be.
 function drawGuide(ctx: CanvasRenderingContext2D) {
   const S = CANVAS_SIZE;
+  // Left transparent (no fill) so both the editor and the saved PNG show
+  // just the brain — no white card behind it.
   ctx.clearRect(0, 0, S, S);
-  ctx.fillStyle = "#fdfaf3";
-  ctx.fillRect(0, 0, S, S);
 
   ctx.save();
-  ctx.globalAlpha = 0.6;
+  ctx.globalAlpha = 0.75;
   ctx.font = `${Math.round(S * 0.72)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";

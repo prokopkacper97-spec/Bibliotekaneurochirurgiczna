@@ -321,10 +321,8 @@ h3,
 
 .flying-brain {
   position: absolute;
-  border-radius: 9999px;
-  object-fit: cover;
-  background: #fdfaf3;
-  box-shadow: 0 8px 20px rgba(20, 40, 70, 0.25);
+  object-fit: contain;
+  filter: drop-shadow(0 6px 14px rgba(20, 40, 70, 0.35));
   animation-name: float-brain;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
