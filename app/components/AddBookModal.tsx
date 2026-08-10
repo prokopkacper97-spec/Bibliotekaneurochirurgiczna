@@ -3,57 +3,49 @@
 import { useState, FormEvent } from "react";
 import type { Book, Group } from "@/lib/types";
 
-type UploadResult = { ok: boolean; data: unknown };
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 /**
- * Uploads with real progress via XMLHttpRequest where possible. Some
- * browsers (notably older Safari/WebKit) can throw synchronously while
- * setting up the request; in that case we fall back to a plain fetch so the
- * upload still works, just without a real percentage.
+ * Uploads a file straight to a Supabase Storage signed upload URL, with
+ * real byte progress via XMLHttpRequest. This bypasses our own Vercel
+ * function entirely, so it isn't subject to its 4.5MB request body limit.
  */
-function uploadWithProgress(
-  url: string,
-  formData: FormData,
-  onProgress: (percent: number) => void
-): Promise<UploadResult> {
+function uploadToSignedUrl(
+  signedUrl: string,
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    try {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", url, true);
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", signedUrl, true);
+    xhr.setRequestHeader("apikey", ANON_KEY);
+    xhr.setRequestHeader("Authorization", `Bearer ${ANON_KEY}`);
+    xhr.setRequestHeader("x-upsert", "false");
+    if (onProgress) {
       xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          onProgress(Math.round((e.loaded / e.total) * 100));
-        }
+        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
       };
-      xhr.onload = () => {
-        let data: unknown = null;
-        try {
-          data = JSON.parse(xhr.responseText);
-        } catch {
-          // non-JSON response, leave data as null
-        }
-        resolve({ ok: xhr.status >= 200 && xhr.status < 300, data });
-      };
-      xhr.onerror = () => reject(new Error("Błąd sieci podczas wysyłania pliku."));
-      xhr.send(formData);
-    } catch {
-      // Fall back to a plain fetch (no percentage, but still works).
-      fetch(url, { method: "POST", body: formData })
-        .then(async (res) => {
-          let data: unknown = null;
-          try {
-            data = await res.json();
-          } catch {
-            // non-JSON response, leave data as null
-          }
-          resolve({ ok: res.ok, data });
-        })
-        .catch(reject);
     }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`Przesyłanie pliku nie powiodło się (status ${xhr.status}).`));
+    };
+    xhr.onerror = () => reject(new Error("Błąd sieci podczas przesyłania pliku."));
+    const form = new FormData();
+    form.append("cacheControl", "3600");
+    form.append("", file);
+    xhr.send(form);
   });
 }
 
-type Phase = "idle" | "uploading" | "processing";
+type Phase = "idle" | "preparing" | "uploading-pdf" | "uploading-cover" | "finalizing";
+
+const PHASE_LABEL: Record<Exclude<Phase, "idle">, string> = {
+  preparing: "Przygotowywanie…",
+  "uploading-pdf": "Wysyłanie pliku PDF…",
+  "uploading-cover": "Wysyłanie okładki…",
+  finalizing: "Zapisywanie w bibliotece…",
+};
 
 export default function AddBookModal({
   groups,
@@ -84,26 +76,43 @@ export default function AddBookModal({
       setError("Wybierz plik PDF.");
       return;
     }
-    setPhase("uploading");
-    setProgress(0);
     setError(null);
     try {
-      const form = new FormData();
-      form.set("title", title);
-      form.set("author", author);
-      form.set("description", description);
-      if (groupId) form.set("groupId", groupId);
-      form.set("file", file);
-      if (cover) form.set("cover", cover);
+      setPhase("preparing");
+      setProgress(0);
+      const prepRes = await fetch("/api/books/prepare-upload", { method: "POST" });
+      const prep = await prepRes.json();
+      if (!prepRes.ok) throw new Error(prep.error ?? "Nie udało się przygotować przesyłania.");
 
-      const uploadUrl = new URL("/api/books", window.location.origin).toString();
-      const { ok, data } = await uploadWithProgress(uploadUrl, form, (percent) => {
-        setProgress(percent);
-        if (percent >= 100) setPhase("processing");
+      setPhase("uploading-pdf");
+      await uploadToSignedUrl(prep.pdf.signedUrl, file, setProgress);
+
+      let hasCustomCover = false;
+      if (cover) {
+        setPhase("uploading-cover");
+        setProgress(0);
+        await uploadToSignedUrl(prep.cover.signedUrl, cover, setProgress);
+        hasCustomCover = true;
+      }
+
+      setPhase("finalizing");
+      const finalizeRes = await fetch("/api/books", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: prep.id,
+          title,
+          author,
+          description,
+          groupId: groupId || null,
+          fileName: file.name,
+          fileSize: file.size,
+          hasCustomCover,
+        }),
       });
-      const body = data as { error?: string } | Book | null;
-      if (!ok) throw new Error((body as { error?: string })?.error ?? "Nie udało się dodać książki.");
-      onCreated(body as Book);
+      const book = await finalizeRes.json();
+      if (!finalizeRes.ok) throw new Error(book.error ?? "Nie udało się dodać książki.");
+      onCreated(book as Book);
     } catch (err) {
       const name = err instanceof Error ? err.name : "";
       const message = err instanceof Error ? err.message : "Wystąpił błąd.";
@@ -186,13 +195,15 @@ export default function AddBookModal({
               <div className="h-2 w-full rounded-full bg-black/30 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-[var(--brass)] transition-[width] duration-150"
-                  style={{ width: `${phase === "processing" ? 100 : progress}%` }}
+                  style={{
+                    width: `${phase === "uploading-pdf" || phase === "uploading-cover" ? progress : 100}%`,
+                  }}
                 />
               </div>
               <p className="text-xs text-[var(--parchment-dark)]">
-                {phase === "uploading"
-                  ? `Wysyłanie pliku… ${progress}%`
-                  : "Przetwarzanie i generowanie okładki…"}
+                {phase === "uploading-pdf" || phase === "uploading-cover"
+                  ? `${PHASE_LABEL[phase]} ${progress}%`
+                  : PHASE_LABEL[phase]}
               </p>
             </div>
           )}
@@ -204,11 +215,7 @@ export default function AddBookModal({
               Anuluj
             </button>
             <button type="submit" className="btn btn-brass" disabled={submitting}>
-              {phase === "uploading"
-                ? `Wysyłanie… ${progress}%`
-                : phase === "processing"
-                  ? "Przetwarzanie…"
-                  : "Dodaj do biblioteki"}
+              {submitting ? `${PHASE_LABEL[phase]}` : "Dodaj do biblioteki"}
             </button>
           </div>
         </form>

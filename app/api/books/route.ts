@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { nanoid } from "nanoid";
 import { prisma } from "@/lib/prisma";
 import { storage } from "@/lib/storage";
 import { renderFirstPageToJpeg } from "@/lib/pdfCover";
@@ -27,21 +26,29 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(books);
 }
 
+/**
+ * Finalizes a book after the browser has already uploaded the PDF (and
+ * optional cover) directly to Supabase Storage via a signed URL obtained
+ * from /api/books/prepare-upload — the file itself never passes through
+ * this Vercel function, which is limited to a 4.5MB request body.
+ */
 export async function POST(req: NextRequest) {
-  const form = await req.formData();
+  const body = await req.json();
 
-  const title = String(form.get("title") ?? "").trim();
-  const author = String(form.get("author") ?? "").trim() || null;
-  const description = String(form.get("description") ?? "").trim() || null;
-  const groupId = String(form.get("groupId") ?? "").trim() || null;
-  const file = form.get("file");
-  const coverFile = form.get("cover");
+  const id = String(body.id ?? "").trim();
+  const title = String(body.title ?? "").trim();
+  const author = String(body.author ?? "").trim() || null;
+  const description = String(body.description ?? "").trim() || null;
+  const groupId = String(body.groupId ?? "").trim() || null;
+  const fileName = String(body.fileName ?? "").trim() || "dokument.pdf";
+  const fileSize = Number.isFinite(body.fileSize) ? Number(body.fileSize) : 0;
+  const hasCustomCover = Boolean(body.hasCustomCover);
 
+  if (!id) {
+    return NextResponse.json({ error: "Brak identyfikatora przesyłania." }, { status: 400 });
+  }
   if (!title) {
     return NextResponse.json({ error: "Tytuł jest wymagany." }, { status: 400 });
-  }
-  if (!(file instanceof File) || file.type !== "application/pdf") {
-    return NextResponse.json({ error: "Wymagany jest plik PDF." }, { status: 400 });
   }
   if (groupId) {
     const group = await prisma.group.findUnique({ where: { id: groupId } });
@@ -50,15 +57,17 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const id = nanoid();
-  const pdfBuffer = Buffer.from(await file.arrayBuffer());
-  await storage.savePdf(id, pdfBuffer);
+  let pdfBuffer: Buffer;
+  try {
+    pdfBuffer = await storage.readPdf(id);
+  } catch {
+    return NextResponse.json(
+      { error: "Nie znaleziono przesłanego pliku PDF. Spróbuj dodać książkę ponownie." },
+      { status: 400 }
+    );
+  }
 
-  let hasCustomCover = false;
-  if (coverFile instanceof File && coverFile.size > 0 && coverFile.type.startsWith("image/")) {
-    await storage.saveCover(id, Buffer.from(await coverFile.arrayBuffer()));
-    hasCustomCover = true;
-  } else {
+  if (!hasCustomCover) {
     try {
       const jpeg = await renderFirstPageToJpeg(pdfBuffer);
       await storage.saveCover(id, jpeg);
@@ -74,8 +83,8 @@ export async function POST(req: NextRequest) {
       title,
       author,
       description,
-      fileName: file.name,
-      fileSize: file.size,
+      fileName,
+      fileSize,
       hasCustomCover,
       groupId,
     },
