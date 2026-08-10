@@ -50,6 +50,7 @@ export default function DrawBrainModal({
   const drawing = useRef(false);
   const history = useRef<ImageData[]>([]);
   const [color, setColor] = useState(COLORS[0]);
+  const [lineWidth, setLineWidth] = useState(4);
   const [name, setName] = useState("");
   const [canUndo, setCanUndo] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -83,7 +84,7 @@ export default function DrawBrainModal({
     drawing.current = true;
     const { x, y } = pointerPos(e);
     ctx.strokeStyle = color;
-    ctx.lineWidth = 4;
+    ctx.lineWidth = lineWidth;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.beginPath();
@@ -175,6 +176,21 @@ export default function DrawBrainModal({
               }}
             />
           ))}
+          <label
+            className="w-6 h-6 rounded-full border-2 border-[rgba(255,255,255,0.2)] cursor-pointer overflow-hidden relative shrink-0"
+            style={{
+              background:
+                "conic-gradient(red, yellow, lime, cyan, blue, magenta, red)",
+            }}
+            title="Wybierz dowolny kolor"
+          >
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+          </label>
           <div className="flex gap-2 ml-auto">
             <button
               type="button"
@@ -188,6 +204,28 @@ export default function DrawBrainModal({
               Wyczyść
             </button>
           </div>
+        </div>
+
+        <div className="flex items-center gap-3 mt-3">
+          <label className="label !mb-0 shrink-0">Grubość</label>
+          <input
+            type="range"
+            min={1}
+            max={20}
+            value={lineWidth}
+            onChange={(e) => setLineWidth(Number(e.target.value))}
+            className="flex-1"
+          />
+          <span
+            aria-hidden
+            className="shrink-0 rounded-full"
+            style={{
+              width: `${Math.max(lineWidth, 3)}px`,
+              height: `${Math.max(lineWidth, 3)}px`,
+              background: color,
+            }}
+          />
+          <span className="text-xs text-[var(--parchment-dark)] w-6 text-right">{lineWidth}</span>
         </div>
 
         <div className="mt-3">
